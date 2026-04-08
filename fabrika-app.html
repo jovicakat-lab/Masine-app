@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="bs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FabrikaPro — Upravljanje Mašinama</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0d0f12;
+    --bg2: #13161b;
+    --bg3: #1a1e26;
+    --bg4: #222832;
+    --border: #2a3040;
+    --border2: #374054;
+    --text: #e8eaf0;
+    --text2: #8b93a8;
+    --text3: #4e5668;
+    --accent: #4f9cf9;
+    --accent2: #2563eb;
+    --green: #22c55e;
+    --green-dim: #166534;
+    --amber: #f59e0b;
+    --amber-dim: #78350f;
+    --red: #ef4444;
+    --red-dim: #7f1d1d;
+    --purple: #a78bfa;
+    --mono: 'DM Mono', monospace;
+    --display: 'Syne', sans-serif;
+    --body: 'Inter', sans-serif;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { height:100%; background:var(--bg); color:var(--text); font-family:var(--body); font-size:14px; overflow:hidden; }
+
+  /* Layout */
+  .app { display:flex; height:100vh; }
+
+  /* Sidebar */
+  .sidebar {
+    width:280px; min-width:280px; background:var(--bg2);
+    border-right:1px solid var(--border); display:flex; flex-direction:column;
+    transition: width 0.3s;
+  }
+  .sidebar-header {
+    padding:20px 16px 16px;
+    border-bottom:1px solid var(--border);
+  }
+  .logo {
+    font-family:var(--display); font-size:18px; font-weight:800;
+    color:var(--text); letter-spacing:-0.5px; display:flex; align-items:center; gap:8px;
+  }
+  .logo-dot { width:8px; height:8px; border-radius:50%; background:var(--accent); }
+  .logo-sub { font-family:var(--mono); font-size:10px; color:var(--text3); margin-top:2px; letter-spacing:1px; }
+
+  .search-box {
+    margin-top:12px; position:relative;
+  }
+  .search-box input {
+    width:100%; background:var(--bg3); border:1px solid var(--border);
+    border-radius:8px; padding:8px 12px 8px 32px;
+    color:var(--text); font-family:var(--body); font-size:13px; outline:none;
+    transition:border-color 0.2s;
+  }
+  .search-box input:focus { border-color:var(--accent); }
+  .search-box input::placeholder { color:var(--text3); }
+  .search-icon { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text3); font-size:14px; }
+
+  .sidebar-section-label {
+    font-family:var(--mono); font-size:10px; color:var(--text3);
+    letter-spacing:1.5px; text-transform:uppercase;
+    padding:16px 16px 8px;
+  }
+
+  .machine-list { flex:1; overflow-y:auto; padding:0 8px 8px; }
+  .machine-list::-webkit-scrollbar { width:4px; }
+  .machine-list::-webkit-scrollbar-track { background:transparent; }
+  .machine-list::-webkit-scrollbar-thumb { background:var(--border2); border-radius:4px; }
+
+  .machine-item {
+    display:flex; align-items:center; gap:10px;
+    padding:10px 10px; border-radius:8px; cursor:pointer;
+    margin-bottom:2px; transition:background 0.15s, border-color 0.15s;
+    border:1px solid transparent;
+  }
+  .machine-item:hover { background:var(--bg3); }
+  .machine-item.active { background:var(--bg4); border-color:var(--border2); }
+
+  .machine-status-dot {
+    width:8px; height:8px; border-radius:50%; flex-shrink:0;
+  }
+  .status-ok { background:var(--green); box-shadow:0 0 6px rgba(34,197,94,0.4); }
+  .status-warn { background:var(--amber); box-shadow:0 0 6px rgba(245,158,11,0.4); }
+  .status-alert { background:var(--red); box-shadow:0 0 6px rgba(239,68,68,0.4); }
+
+  .machine-info { flex:1; min-width:0; }
+  .machine-name { font-weight:500; color:var(--text); font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .machine-meta { font-size:11px; color:var(--text3); font-family:var(--mono); margin-top:1px; }
+
+  .machine-hours-badge {
+    font-family:var(--mono); font-size:10px; color:var(--text3);
+    background:var(--bg3); border:1px solid var(--border); border-radius:4px;
+    padding:2px 6px; flex-shrink:0;
+  }
+
+  .btn-add-machine {
+    margin:8px; padding:10px; border-radius:8px;
+    border:1px dashed var(--border2); background:transparent;
+    color:var(--text3); font-family:var(--body); font-size:13px;
+    cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;
+    transition:all 0.2s;
+  }
+  .btn-add-machine:hover { border-color:var(--accent); color:var(--accent); background:rgba(79,156,249,0.05); }
+
+  /* Main area */
+  .main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+
+  /* Empty state */
+  .empty-state {
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    color:var(--text3); gap:12px;
+  }
+  .empty-icon { font-size:48px; opacity:0.3; }
+  .empty-title { font-family:var(--display); font-size:20px; color:var(--text2); }
+  .empty-sub { font-size:13px; max-width:280px; text-align:center; line-height:1.6; }
+
+  /* Machine detail */
+  .machine-detail { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+
+  .detail-header {
+    padding:20px 28px 16px;
+    border-bottom:1px solid var(--border);
+    background:var(--bg2);
+    display:flex; align-items:flex-start; justify-content:space-between;
+  }
+  .detail-header-left { display:flex; align-items:center; gap:14px; }
+  .machine-icon {
+    width:44px; height:44px; border-radius:10px; background:var(--bg4);
+    border:1px solid var(--border2); display:flex; align-items:center; justify-content:center;
+    font-size:22px;
+  }
+  .detail-title { font-family:var(--display); font-size:22px; font-weight:700; color:var(--text); }
+  .detail-subtitle { font-size:12px; color:var(--text3); font-family:var(--mono); margin-top:3px; }
+
+  .status-badge {
+    display:inline-flex; align-items:center; gap:6px;
+    padding:4px 10px; border-radius:20px; font-size:11px; font-weight:500;
+    font-family:var(--mono);
+  }
+  .badge-ok { background:rgba(34,197,94,0.1); border:1px solid rgba(34,197,94,0.3); color:var(--green); }
+  .badge-warn { background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.3); color:var(--amber); }
+  .badge-alert { background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3); color:var(--red); }
+
+  /* Tabs */
+  .tabs {
+    display:flex; gap:0; padding:0 28px;
+    border-bottom:1px solid var(--border); background:var(--bg2);
+  }
+  .tab {
+    padding:12px 16px; font-size:13px; font-weight:500; color:var(--text3);
+    cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px;
+    transition:all 0.15s; white-space:nowrap;
+  }
+  .tab:hover { color:var(--text2); }
+  .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .tab-badge {
+    display:inline-block; background:var(--red-dim); color:var(--red);
+    border-radius:10px; padding:1px 6px; font-size:10px; margin-left:6px;
+    font-family:var(--mono);
+  }
+
+  /* Tab content */
+  .tab-content { flex:1; overflow-y:auto; padding:24px 28px; }
+  .tab-content::-webkit-scrollbar { width:4px; }
+  .tab-content::-webkit-scrollbar-track { background:transparent; }
+  .tab-content::-webkit-scrollbar-thumb { background:var(--border2); border-radius:4px; }
+
+  /* Hours section */
+  .section-title {
+    font-family:var(--display); font-size:15px; font-weight:700;
+    color:var(--text); margin-bottom:14px; display:flex; align-items:center; gap:8px;
+  }
+  .section-title-icon { font-size:16px; }
+
+  .stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:28px; }
+  .stat-card {
+    background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:16px;
+  }
+  .stat-label { font-size:11px; color:var(--text3); font-family:var(--mono); text-transform:uppercase; letter-spacing:0.8px; }
+  .stat-value { font-family:var(--display); font-size:28px; font-weight:800; color:var(--text); margin-top:4px; }
+  .stat-unit { font-size:12px; color:var(--text3); font-family:var(--mono); }
+  .stat-sub { font-size:11px; color:var(--text3); margin-top:4px; }
+
+  .hours-entry-form {
+    background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:20px; margin-bottom:24px;
+  }
+  .form-row { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; }
+  .form-group { display:flex; flex-direction:column; gap:6px; }
+  .form-group label { font-size:11px; color:var(--text3); font-family:var(--mono); text-transform:uppercase; letter-spacing:0.8px; }
+  .form-group input, .form-group select {
+    background:var(--bg4); border:1px solid var(--border2); border-radius:7px;
+    padding:9px 12px; color:var(--text); font-family:var(--mono); font-size:13px;
+    outline:none; transition:border-color 0.2s; min-width:130px;
+  }
+  .form-group input:focus, .form-group select:focus { border-color:var(--accent); }
+  .form-group select option { background:var(--bg4); }
+
+  .btn {
+    padding:9px 18px; border-radius:7px; font-family:var(--body); font-size:13px;
+    font-weight:500; cursor:pointer; transition:all 0.15s; border:none;
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  .btn-primary { background:var(--accent2); color:#fff; }
+  .btn-primary:hover { background:var(--accent); }
+  .btn-secondary { background:var(--bg4); color:var(--text2); border:1px solid var(--border2); }
+  .btn-secondary:hover { border-color:var(--border); color:var(--text); }
+  .btn-danger { background:rgba(239,68,68,0.1); color:var(--red); border:1px solid rgba(239,68,68,0.2); }
+  .btn-danger:hover { background:rgba(239,68,68,0.2); }
+
+  /* Hours history table */
+  .hours-table { width:100%; border-collapse:collapse; }
+  .hours-table th {
+    text-align:left; padding:10px 12px; font-size:10px; color:var(--text3);
+    font-family:var(--mono); text-transform:uppercase; letter-spacing:1px;
+    border-bottom:1px solid var(--border); background:var(--bg3);
+  }
+  .hours-table th:first-child { border-radius:8px 0 0 0; }
+  .hours-table th:last-child { border-radius:0 8px 0 0; }
+  .hours-table td { padding:11px 12px; border-bottom:1px solid var(--border); font-family:var(--mono); font-size:13px; color:var(--text2); }
+  .hours-table tr:last-child td { border-bottom:none; }
+  .hours-table tr:hover td { background:var(--bg3); }
+  .hours-num { color:var(--text); font-weight:500; }
+
+  /* Bar chart */
+  .chart-wrap { margin-bottom:28px; }
+  .chart-bars { display:flex; align-items:flex-end; gap:6px; height:100px; margin-bottom:6px; }
+  .chart-bar-wrap { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; height:100%; justify-content:flex-end; }
+  .chart-bar {
+    width:100%; border-radius:4px 4px 0 0; background:var(--accent2);
+    opacity:0.7; transition:opacity 0.2s, height 0.4s;
+    min-height:4px;
+  }
+  .chart-bar:hover { opacity:1; }
+  .chart-label { font-family:var(--mono); font-size:9px; color:var(--text3); }
+
+  /* Documents */
+  .doc-upload-zone {
+    border:2px dashed var(--border2); border-radius:12px; padding:32px;
+    text-align:center; cursor:pointer; transition:all 0.2s; margin-bottom:20px;
+    background:var(--bg3);
+  }
+  .doc-upload-zone:hover { border-color:var(--accent); background:rgba(79,156,249,0.03); }
+  .doc-upload-icon { font-size:32px; margin-bottom:8px; opacity:0.5; }
+  .doc-upload-text { color:var(--text3); font-size:13px; }
+  .doc-upload-text span { color:var(--accent); }
+  .doc-upload-input { display:none; }
+
+  .doc-category-tabs { display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap; }
+  .doc-cat-btn {
+    padding:5px 12px; border-radius:20px; font-size:12px; font-family:var(--mono);
+    cursor:pointer; border:1px solid var(--border2); background:transparent; color:var(--text3);
+    transition:all 0.15s;
+  }
+  .doc-cat-btn:hover { border-color:var(--border); color:var(--text2); }
+  .doc-cat-btn.active { background:var(--accent2); border-color:var(--accent2); color:#fff; }
+
+  .doc-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:10px; }
+  .doc-card {
+    background:var(--bg3); border:1px solid var(--border); border-radius:9px;
+    padding:14px; cursor:pointer; transition:all 0.15s; position:relative;
+  }
+  .doc-card:hover { border-color:var(--border2); transform:translateY(-1px); }
+  .doc-icon { font-size:28px; margin-bottom:8px; }
+  .doc-name { font-size:12px; color:var(--text); font-weight:500; margin-bottom:4px; word-break:break-word; }
+  .doc-meta { font-size:10px; color:var(--text3); font-family:var(--mono); }
+  .doc-cat-label {
+    position:absolute; top:8px; right:8px; font-size:9px; font-family:var(--mono);
+    padding:2px 6px; border-radius:4px; text-transform:uppercase; letter-spacing:0.5px;
+  }
+  .cat-uputstvo { background:rgba(79,156,249,0.15); color:var(--accent); }
+  .cat-certifikat { background:rgba(167,139,250,0.15); color:var(--purple); }
+  .cat-servis { background:rgba(34,197,94,0.15); color:var(--green); }
+  .cat-pranje { background:rgba(245,158,11,0.15); color:var(--amber); }
+  .cat-ostalo { background:rgba(139,147,168,0.15); color:var(--text2); }
+
+  /* AI section */
+  .ai-header {
+    background:linear-gradient(135deg, rgba(79,156,249,0.08), rgba(167,139,250,0.06));
+    border:1px solid rgba(79,156,249,0.2); border-radius:12px; padding:20px;
+    margin-bottom:20px; display:flex; align-items:center; gap:16px;
+  }
+  .ai-logo { font-size:28px; }
+  .ai-header-text h3 { font-family:var(--display); font-size:15px; font-weight:700; color:var(--text); }
+  .ai-header-text p { font-size:12px; color:var(--text3); margin-top:3px; line-height:1.5; }
+
+  .ai-analyze-btn {
+    margin-left:auto; padding:10px 20px; background:var(--accent2); color:#fff;
+    border:none; border-radius:8px; font-family:var(--body); font-size:13px;
+    font-weight:500; cursor:pointer; display:flex; align-items:center; gap:8px;
+    transition:background 0.15s; white-space:nowrap; flex-shrink:0;
+  }
+  .ai-analyze-btn:hover { background:var(--accent); }
+  .ai-analyze-btn:disabled { opacity:0.5; cursor:not-allowed; }
+
+  .ai-alerts { display:flex; flex-direction:column; gap:10px; margin-bottom:20px; }
+  .ai-alert {
+    border-radius:9px; padding:14px 16px; border:1px solid;
+    display:flex; gap:12px; align-items:flex-start;
+  }
+  .ai-alert-red { background:rgba(239,68,68,0.07); border-color:rgba(239,68,68,0.25); }
+  .ai-alert-amber { background:rgba(245,158,11,0.07); border-color:rgba(245,158,11,0.25); }
+  .ai-alert-blue { background:rgba(79,156,249,0.07); border-color:rgba(79,156,249,0.2); }
+  .ai-alert-green { background:rgba(34,197,94,0.07); border-color:rgba(34,197,94,0.25); }
+  .ai-alert-icon { font-size:18px; flex-shrink:0; margin-top:1px; }
+  .ai-alert-title { font-size:13px; font-weight:500; color:var(--text); }
+  .ai-alert-desc { font-size:12px; color:var(--text3); margin-top:3px; line-height:1.6; }
+  .ai-alert-meta { font-size:10px; font-family:var(--mono); margin-top:6px; }
+  .meta-red { color:var(--red); }
+  .meta-amber { color:var(--amber); }
+  .meta-blue { color:var(--accent); }
+  .meta-green { color:var(--green); }
+
+  .ai-chat-box {
+    background:var(--bg3); border:1px solid var(--border); border-radius:10px;
+    overflow:hidden;
+  }
+  .ai-messages { padding:16px; max-height:300px; overflow-y:auto; display:flex; flex-direction:column; gap:12px; }
+  .ai-messages::-webkit-scrollbar { width:3px; }
+  .ai-messages::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+
+  .msg { display:flex; gap:10px; }
+  .msg-ai { justify-content:flex-start; }
+  .msg-user { justify-content:flex-end; }
+  .msg-bubble {
+    max-width:80%; padding:10px 14px; border-radius:10px; font-size:13px; line-height:1.6;
+  }
+  .msg-ai .msg-bubble { background:var(--bg4); color:var(--text2); border-radius:2px 10px 10px 10px; }
+  .msg-user .msg-bubble { background:var(--accent2); color:#fff; border-radius:10px 2px 10px 10px; }
+  .msg-avatar { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; margin-top:2px; }
+  .avatar-ai { background:rgba(79,156,249,0.15); border:1px solid rgba(79,156,249,0.3); }
+  .avatar-user { background:var(--bg4); border:1px solid var(--border2); }
+
+  .ai-input-row {
+    display:flex; gap:0; border-top:1px solid var(--border); padding:12px 14px; gap:8px;
+  }
+  .ai-input {
+    flex:1; background:var(--bg4); border:1px solid var(--border2); border-radius:7px;
+    padding:9px 12px; color:var(--text); font-family:var(--body); font-size:13px; outline:none;
+    transition:border-color 0.2s;
+  }
+  .ai-input:focus { border-color:var(--accent); }
+  .ai-input::placeholder { color:var(--text3); }
+
+  /* Maintenance alerts in sidebar */
+  .sidebar-alerts { padding:0 8px 8px; }
+  .alert-item {
+    display:flex; align-items:center; gap:8px; padding:8px 10px;
+    border-radius:7px; margin-bottom:4px; font-size:11px;
+  }
+  .alert-item-red { background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.2); }
+  .alert-item-amber { background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.2); }
+  .alert-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .alert-text { color:var(--text3); line-height:1.4; }
+  .alert-text strong { color:var(--text2); }
+
+  /* Loader */
+  .ai-loading { display:flex; align-items:center; gap:10px; padding:12px; color:var(--text3); font-size:13px; }
+  .dots { display:flex; gap:4px; }
+  .dot { width:6px; height:6px; border-radius:50%; background:var(--accent); animation:blink 1.2s infinite; }
+  .dot:nth-child(2) { animation-delay:0.2s; }
+  .dot:nth-child(3) { animation-delay:0.4s; }
+  @keyframes blink { 0%,80%,100%{opacity:0.2} 40%{opacity:1} }
+
+  /* Modal */
+  .modal-overlay {
+    position:fixed; inset:0; background:rgba(0,0,0,0.7); display:flex;
+    align-items:center; justify-content:center; z-index:100;
+    backdrop-filter:blur(4px);
+  }
+  .modal {
+    background:var(--bg2); border:1px solid var(--border2); border-radius:14px;
+    padding:28px; width:440px; max-width:95vw;
+  }
+  .modal-title { font-family:var(--display); font-size:18px; font-weight:700; margin-bottom:20px; }
+  .modal-form { display:flex; flex-direction:column; gap:14px; }
+  .modal-form .form-group { flex:1; }
+  .modal-form .form-group input,
+  .modal-form .form-group select { width:100%; }
+  .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:8px; }
+
+  .hidden { display:none !important; }
+  .tab-panel { display:none; }
+  .tab-panel.active { display:block; }
+
+  /* Notifications toast */
+  .toast-wrap { position:fixed; bottom:20px; right:20px; z-index:200; display:flex; flex-direction:column; gap:8px; }
+  .toast {
+    background:var(--bg3); border:1px solid var(--border2); border-radius:9px;
+    padding:12px 16px; font-size:13px; color:var(--text); max-width:300px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.4);
+    animation:slideIn 0.3s ease;
+  }
+  @keyframes slideIn { from{transform:translateX(20px);opacity:0} to{transform:translateX(0);opacity:1} }
+
+  .top-bar {
+    padding:14px 28px; border-bottom:1px solid var(--border); background:var(--bg2);
+    display:flex; align-items:center; justify-content:flex-end; gap:12px;
+  }
+  .top-bar-info { font-family:var(--mono); font-size:11px; color:var(--text3); }
+  .alert-count-badge {
+    background:var(--red-dim); color:var(--red); border:1px solid rgba(239,68,68,0.3);
+    border-radius:20px; padding:3px 10px; font-size:11px; font-family:var(--mono);
+    display:flex; align-items:center; gap:5px;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo"><div class="logo-dot"></div>FabrikaPro</div>
+      <div class="logo-sub">UPRAVLJANJE MAŠINAMA</div>
+      <div class="search-box">
+        <span class="search-icon">⌕</span>
+        <input type="text" id="searchInput" placeholder="Pretraži mašine..." oninput="filterMachines()">
+      </div>
+    </div>
+
+    <div class="sidebar-section-label">Mašine i uređaji</div>
+    <div class="machine-list" id="machineList"></div>
+    <button class="btn-add-machine" onclick="showAddModal()">+ Dodaj mašinu</button>
+
+    <div class="sidebar-section-label">Upozorenja</div>
+    <div class="sidebar-alerts" id="sidebarAlerts"></div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main" id="mainArea">
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">⚙</div>
+      <div class="empty-title">Odaberi mašinu</div>
+      <div class="empty-sub">Klikni na mašinu s lijeve strane da vidiš detalje, historiju sati i dokumentaciju.</div>
+    </div>
+
+    <div class="machine-detail hidden" id="machineDetail">
+      <div class="top-bar">
+        <span class="top-bar-info" id="topBarDate"></span>
+        <div class="alert-count-badge" id="alertCountBadge"></div>
+      </div>
+
+      <div class="detail-header">
+        <div class="detail-header-left">
+          <div class="machine-icon" id="detailIcon">⚙</div>
+          <div>
+            <div class="detail-title" id="detailTitle">Mašina</div>
+            <div class="detail-subtitle" id="detailSubtitle">Lokacija · ID</div>
+          </div>
+        </div>
+        <div>
+          <span class="status-badge" id="detailStatus"></span>
+        </div>
+      </div>
+
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('hours')">📊 Radni sati</div>
+        <div class="tab" onclick="switchTab('docs')">📁 Dokumenti</div>
+        <div class="tab" onclick="switchTab('ai')">🤖 AI Analiza <span class="tab-badge" id="aiBadge"></span></div>
+      </div>
+
+      <!-- HOURS TAB -->
+      <div class="tab-content tab-panel active" id="tab-hours">
+        <div class="section-title"><span class="section-title-icon">📊</span>Pregled sati</div>
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Ukupno sati</div>
+            <div class="stat-value" id="statTotal">0</div>
+            <div class="stat-unit">h ukupno</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Ova sedmica</div>
+            <div class="stat-value" id="statWeek">0</div>
+            <div class="stat-unit">h / sedm.</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Od servisa</div>
+            <div class="stat-value" id="statSinceService">0</div>
+            <div class="stat-unit">h od zadnjeg</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">Do servisa</div>
+            <div class="stat-value" id="statToService" style="color:var(--amber)">—</div>
+            <div class="stat-unit" id="statToServiceUnit">h ostalo</div>
+          </div>
+        </div>
+
+        <div class="section-title"><span class="section-title-icon">➕</span>Unos radnih sati</div>
+        <div class="hours-entry-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Sedmica</label>
+              <input type="week" id="weekInput">
+            </div>
+            <div class="form-group">
+              <label>Broj sati</label>
+              <input type="number" id="hoursInput" min="0" max="168" placeholder="npr. 40">
+            </div>
+            <div class="form-group">
+              <label>Napomena</label>
+              <input type="text" id="noteInput" placeholder="Opciono...">
+            </div>
+            <button class="btn btn-primary" onclick="addHoursEntry()">Unesi sate</button>
+          </div>
+        </div>
+
+        <div class="section-title"><span class="section-title-icon">📈</span>Historija po sedmicama</div>
+        <div class="chart-wrap" id="chartWrap"></div>
+
+        <table class="hours-table" id="hoursTable">
+          <thead>
+            <tr>
+              <th>Sedmica</th>
+              <th>Sati</th>
+              <th>Kumulativ</th>
+              <th>Napomena</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="hoursTableBody"></tbody>
+        </table>
+      </div>
+
+      <!-- DOCS TAB -->
+      <div class="tab-content tab-panel hidden" id="tab-docs">
+        <div class="section-title"><span class="section-title-icon">📁</span>Dokumentacija mašine</div>
+
+        <label class="doc-upload-zone" for="fileInput" id="dropZone">
+          <input type="file" id="fileInput" class="doc-upload-input" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xlsx,.xls" onchange="handleFileUpload(event)">
+          <div class="doc-upload-icon">📎</div>
+          <div class="doc-upload-text">
+            Prevuci fajlove ovdje ili <span>klikni za odabir</span><br>
+            <span style="font-size:11px;color:var(--text3)">PDF, Word, Excel, slike • Maks. 50MB po fajlu</span>
+          </div>
+        </label>
+
+        <div class="doc-category-tabs">
+          <button class="doc-cat-btn active" onclick="filterDocs('sve', this)">Sve</button>
+          <button class="doc-cat-btn" onclick="filterDocs('uputstvo', this)">📘 Uputstvo za rad</button>
+          <button class="doc-cat-btn" onclick="filterDocs('certifikat', this)">🏅 Certifikati</button>
+          <button class="doc-cat-btn" onclick="filterDocs('servis', this)">🔧 Servisni zapisi</button>
+          <button class="doc-cat-btn" onclick="filterDocs('pranje', this)">🧹 Postupci pranja</button>
+          <button class="doc-cat-btn" onclick="filterDocs('ostalo', this)">📄 Ostalo</button>
+        </div>
+
+        <div class="doc-grid" id="docGrid"></div>
+      </div>
+
+      <!-- AI TAB -->
+      <div class="tab-content tab-panel hidden" id="tab-ai">
+        <div class="ai-header">
+          <div class="ai-logo">🤖</div>
+          <div class="ai-header-text">
+            <h3>AI Asistent za preventivno održavanje</h3>
+            <p>Analizira radne sate, dokumente i historiju servisa. Daje preporuke za servisiranje, zamjenu dijelova i obnovu certifikata.</p>
+          </div>
+          <button class="ai-analyze-btn" id="analyzeBtn" onclick="runAiAnalysis()">✨ Analiziraj</button>
+        </div>
+
+        <div id="aiAlerts" class="ai-alerts"></div>
+
+        <div class="section-title"><span class="section-title-icon">💬</span>Pitaj AI o mašini</div>
+        <div class="ai-chat-box">
+          <div class="ai-messages" id="aiMessages">
+            <div class="msg msg-ai">
+              <div class="msg-avatar avatar-ai">🤖</div>
+              <div class="msg-bubble">Zdravo! Ovdje sam da pomognem s analizom ove mašine. Klikni "Analiziraj" za automatsku procjenu, ili mi postavi pitanje.</div>
+            </div>
+          </div>
+          <div class="ai-input-row">
+            <input type="text" class="ai-input" id="aiInput" placeholder="Npr: Kada treba zamijeniti filter? Koji je interval servisa?" onkeydown="if(event.key==='Enter')sendAiMessage()">
+            <button class="btn btn-primary" onclick="sendAiMessage()">Pošalji</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD MACHINE MODAL -->
+<div class="modal-overlay hidden" id="addModal">
+  <div class="modal">
+    <div class="modal-title">➕ Dodaj novu mašinu</div>
+    <div class="modal-form">
+      <div class="form-group">
+        <label>Naziv mašine *</label>
+        <input type="text" id="newName" placeholder="npr. CNC Glodalica Haas VF-2">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Tip</label>
+          <select id="newType">
+            <option value="⚙">⚙ Opšte</option>
+            <option value="🔩">🔩 Mašinska obrada</option>
+            <option value="⚡">⚡ Električna</option>
+            <option value="💧">💧 Hidraulična</option>
+            <option value="🌡">🌡 Termička</option>
+            <option value="🤖">🤖 Robot</option>
+            <option value="🏭">🏭 Presa/Linija</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Interval servisa (h)</label>
+          <input type="number" id="newInterval" placeholder="500" min="50">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Lokacija u fabrici</label>
+        <input type="text" id="newLocation" placeholder="npr. Hala A, Sekcija 3">
+      </div>
+      <div class="form-group">
+        <label>Serijski broj / ID</label>
+        <input type="text" id="newSerial" placeholder="npr. SN-2019-4421">
+      </div>
+      <div class="form-group">
+        <label>Napomena</label>
+        <input type="text" id="newNote" placeholder="Opciono...">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="hideModal()">Odustani</button>
+      <button class="btn btn-primary" onclick="addMachine()">Dodaj mašinu</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+// ============================================================
+// DATA STORE
+// ============================================================
+let appData = {
+  machines: [],
+  currentMachineId: null,
+  aiDocCategory: 'sve'
+};
+
+function save() {
+  try { localStorage.setItem('fabrikapro_v2', JSON.stringify(appData)); } catch(e){}
+}
+function load() {
+  try {
+    const d = localStorage.getItem('fabrikapro_v2');
+    if (d) appData = JSON.parse(d);
+  } catch(e){}
+}
+
+// ============================================================
+// DEMO DATA
+// ============================================================
+function loadDemoData() {
+  if (appData.machines.length > 0) return;
+  appData.machines = [
+    {
+      id: 'm1', name: 'CNC Glodalica Haas VF-2', type: '🔩',
+      location: 'Hala A, Sekcija 1', serial: 'SN-2018-8841',
+      serviceInterval: 500, lastServiceHours: 0, note: 'Godišnji servis ugovorenom firmom',
+      hours: [
+        { id:'h1', week:'2025-W01', hours:38, note:'' },
+        { id:'h2', week:'2025-W02', hours:42, note:'Noćna smjena' },
+        { id:'h3', week:'2025-W03', hours:35, note:'' },
+        { id:'h4', week:'2025-W04', hours:40, note:'' },
+        { id:'h5', week:'2025-W05', hours:44, note:'Puna sedmica' },
+        { id:'h6', week:'2025-W06', hours:38, note:'' },
+        { id:'h7', week:'2025-W07', hours:41, note:'' },
+        { id:'h8', week:'2025-W08', hours:46, note:'Hitna narudžba' },
+      ],
+      docs: [
+        { id:'d1', name:'Haas VF-2 Uputstvo.pdf', category:'uputstvo', size:'4.2 MB', date:'2024-01-15', type:'pdf' },
+        { id:'d2', name:'CE Certifikat 2024.pdf', category:'certifikat', size:'1.1 MB', date:'2024-03-01', type:'pdf' },
+        { id:'d3', name:'Servisni zapis Jan 2025.pdf', category:'servis', size:'0.8 MB', date:'2025-01-10', type:'pdf' },
+      ]
+    },
+    {
+      id: 'm2', name: 'Hidraulična presa 200T', type: '💧',
+      location: 'Hala B, Pozicija 4', serial: 'HP-2020-0077',
+      serviceInterval: 300, lastServiceHours: 240, note: '',
+      hours: [
+        { id:'h1', week:'2025-W01', hours:30, note:'' },
+        { id:'h2', week:'2025-W02', hours:28, note:'' },
+        { id:'h3', week:'2025-W03', hours:32, note:'' },
+        { id:'h4', week:'2025-W04', hours:29, note:'' },
+        { id:'h5', week:'2025-W05', hours:31, note:'' },
+      ],
+      docs: [
+        { id:'d1', name:'Hidraulički dijagram.pdf', category:'uputstvo', size:'2.8 MB', date:'2023-06-20', type:'pdf' },
+        { id:'d2', name:'Postupak čišćenja.docx', category:'pranje', size:'0.5 MB', date:'2024-02-05', type:'doc' },
+      ]
+    },
+    {
+      id: 'm3', name: 'Kompresor Atlas Copco GA15', type: '⚡',
+      location: 'Mašinska soba', serial: 'AC-2021-3312',
+      serviceInterval: 2000, lastServiceHours: 1800, note: 'Servis svake 2000h ili godišnje',
+      hours: [
+        { id:'h1', week:'2025-W01', hours:168, note:'24/7 rad' },
+        { id:'h2', week:'2025-W02', hours:168, note:'24/7 rad' },
+        { id:'h3', week:'2025-W03', hours:168, note:'24/7 rad' },
+        { id:'h4', week:'2025-W04', hours:150, note:'Planirani zastoj' },
+      ],
+      docs: []
+    },
+  ];
+  save();
+}
+
+// ============================================================
+// MACHINE LIST
+// ============================================================
+function getCurrentMachine() {
+  return appData.machines.find(m => m.id === appData.currentMachineId);
+}
+
+function getTotalHours(m) { return m.hours.reduce((s,h) => s + h.hours, 0); }
+function getSinceService(m) { return getTotalHours(m) - (m.lastServiceHours || 0); }
+
+function getMachineStatus(m) {
+  const since = getSinceService(m);
+  const interval = m.serviceInterval || 500;
+  const pct = since / interval;
+  if (pct >= 1) return 'alert';
+  if (pct >= 0.8) return 'warn';
+  return 'ok';
+}
+
+function renderMachineList(filter='') {
+  const list = document.getElementById('machineList');
+  list.innerHTML = '';
+  const fl = filter.toLowerCase();
+  appData.machines
+    .filter(m => !fl || m.name.toLowerCase().includes(fl) || (m.location||'').toLowerCase().includes(fl))
+    .forEach(m => {
+      const total = getTotalHours(m);
+      const status = getMachineStatus(m);
+      const el = document.createElement('div');
+      el.className = 'machine-item' + (m.id === appData.currentMachineId ? ' active' : '');
+      el.onclick = () => selectMachine(m.id);
+      el.innerHTML = `
+        <div class="machine-status-dot status-${status}"></div>
+        <div class="machine-info">
+          <div class="machine-name">${m.type} ${m.name}</div>
+          <div class="machine-meta">${m.location || 'Bez lokacije'}</div>
+        </div>
+        <div class="machine-hours-badge">${total}h</div>
+      `;
+      list.appendChild(el);
+    });
+}
+
+function filterMachines() {
+  renderMachineList(document.getElementById('searchInput').value);
+}
+
+function renderSidebarAlerts() {
+  const cont = document.getElementById('sidebarAlerts');
+  cont.innerHTML = '';
+  const alerts = [];
+  appData.machines.forEach(m => {
+    const s = getMachineStatus(m);
+    if (s === 'alert') alerts.push({name:m.name, type:'red', msg:'Prekoračen interval servisa'});
+    else if (s === 'warn') alerts.push({name:m.name, type:'amber', msg:'Bliži se termin servisa'});
+  });
+  if (!alerts.length) {
+    cont.innerHTML = '<div style="padding:8px 10px;font-size:11px;color:var(--text3)">Nema aktivnih upozorenja</div>';
+    return;
+  }
+  alerts.slice(0,4).forEach(a => {
+    const el = document.createElement('div');
+    el.className = `alert-item alert-item-${a.type}`;
+    el.innerHTML = `<div class="alert-dot" style="background:var(--${a.type === 'red' ? 'red' : 'amber'})"></div>
+      <div class="alert-text"><strong>${a.name.substring(0,20)}</strong><br>${a.msg}</div>`;
+    cont.appendChild(el);
+  });
+}
+
+// ============================================================
+// SELECT MACHINE
+// ============================================================
+function selectMachine(id) {
+  appData.currentMachineId = id;
+  save();
+  renderMachineList(document.getElementById('searchInput').value);
+
+  const m = getCurrentMachine();
+  if (!m) return;
+
+  document.getElementById('emptyState').classList.add('hidden');
+  document.getElementById('machineDetail').classList.remove('hidden');
+
+  document.getElementById('detailIcon').textContent = m.type;
+  document.getElementById('detailTitle').textContent = m.name;
+  document.getElementById('detailSubtitle').textContent = `${m.location || 'Bez lokacije'} · ${m.serial || 'Bez serijskog broja'}`;
+
+  const status = getMachineStatus(m);
+  const statusEl = document.getElementById('detailStatus');
+  const labels = {ok:'Uredan rad', warn:'Bliži se servis', alert:'Potreban servis'};
+  statusEl.className = `status-badge badge-${status}`;
+  statusEl.textContent = '● ' + labels[status];
+
+  updateAlertBadge(m);
+  renderHoursTab(m);
+  renderDocsTab(m);
+  renderAiAlerts(m);
+
+  // Set week input to current week
+  const now = new Date();
+  const yr = now.getFullYear();
+  const wk = getISOWeek(now);
+  document.getElementById('weekInput').value = `${yr}-W${String(wk).padStart(2,'0')}`;
+
+  // Date top bar
+  document.getElementById('topBarDate').textContent = new Date().toLocaleDateString('bs-BA', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+
+  switchTab('hours');
+}
+
+function updateAlertBadge(m) {
+  const status = getMachineStatus(m);
+  const badge = document.getElementById('alertCountBadge');
+  const aiBadge = document.getElementById('aiBadge');
+  if (status !== 'ok') {
+    badge.textContent = '⚠ ' + (status === 'alert' ? 'Potreban servis' : 'Provjeri servis');
+    badge.style.display = 'flex';
+    aiBadge.textContent = '!';
+    aiBadge.classList.remove('hidden');
+  } else {
+    badge.style.display = 'none';
+    aiBadge.textContent = '';
+  }
+}
+
+// ============================================================
+// HOURS TAB
+// ============================================================
+function renderHoursTab(m) {
+  const total = getTotalHours(m);
+  const since = getSinceService(m);
+  const interval = m.serviceInterval || 500;
+  const toService = Math.max(0, interval - since);
+  const lastWeekH = m.hours.length > 0 ? m.hours[m.hours.length-1].hours : 0;
+
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statWeek').textContent = lastWeekH;
+  document.getElementById('statSinceService').textContent = since;
+  document.getElementById('statToService').textContent = toService;
+  document.getElementById('statToService').style.color = toService < interval*0.2 ? 'var(--red)' : toService < interval*0.4 ? 'var(--amber)' : 'var(--green)';
+  document.getElementById('statToServiceUnit').textContent = 'h ostalo do servisa';
+
+  renderChart(m);
+  renderHoursTable(m);
+}
+
+function renderChart(m) {
+  const wrap = document.getElementById('chartWrap');
+  const entries = m.hours.slice(-8);
+  if (!entries.length) { wrap.innerHTML = '<p style="color:var(--text3);font-size:13px;padding:12px 0">Nema unesenih sati.</p>'; return; }
+  const maxH = Math.max(...entries.map(e=>e.hours), 1);
+  const bars = entries.map(e => {
+    const pct = Math.round((e.hours/maxH)*100);
+    return `<div class="chart-bar-wrap">
+      <div class="chart-bar" style="height:${pct}%" title="${e.hours}h"></div>
+      <div class="chart-label">${e.week.replace(/.*W/,'W')}</div>
+    </div>`;
+  }).join('');
+  wrap.innerHTML = `<div class="chart-bars">${bars}</div>`;
+}
+
+function renderHoursTable(m) {
+  const tbody = document.getElementById('hoursTableBody');
+  tbody.innerHTML = '';
+  let cum = 0;
+  m.hours.slice().reverse().forEach(entry => {
+    cum += entry.hours;
+  });
+  let running = getTotalHours(m);
+  m.hours.slice().reverse().forEach(entry => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${entry.week}</td>
+      <td class="hours-num">${entry.hours} h</td>
+      <td style="color:var(--text3)">${running} h</td>
+      <td style="color:var(--text3)">${entry.note || '—'}</td>
+      <td><button class="btn btn-danger" style="padding:4px 8px;font-size:11px" onclick="deleteEntry('${entry.id}')">✕</button></td>
+    `;
+    tbody.appendChild(tr);
+    running -= entry.hours;
+  });
+  if (!m.hours.length) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td colspan="5" style="text-align:center;color:var(--text3);padding:24px">Nema unesenih sati. Koristite formu iznad.</td>`;
+    tbody.appendChild(tr);
+  }
+}
+
+function addHoursEntry() {
+  const m = getCurrentMachine();
+  if (!m) return;
+  const week = document.getElementById('weekInput').value;
+  const hours = parseFloat(document.getElementById('hoursInput').value);
+  const note = document.getElementById('noteInput').value.trim();
+  if (!week || isNaN(hours) || hours < 0) { toast('Unesite sedmicu i broj sati.'); return; }
+  if (m.hours.find(h => h.week === week)) { toast('Sati za ovu sedmicu su već uneseni. Obrišite stari unos.'); return; }
+  m.hours.push({ id:'h'+Date.now(), week, hours, note });
+  m.hours.sort((a,b)=>a.week.localeCompare(b.week));
+  document.getElementById('hoursInput').value = '';
+  document.getElementById('noteInput').value = '';
+  save();
+  renderHoursTab(m);
+  renderMachineList(document.getElementById('searchInput').value);
+  renderSidebarAlerts();
+  updateAlertBadge(m);
+  toast(`✓ Uneseno ${hours}h za ${week}`);
+}
+
+function deleteEntry(id) {
+  const m = getCurrentMachine();
+  if (!m) return;
+  m.hours = m.hours.filter(h => h.id !== id);
+  save();
+  renderHoursTab(m);
+  renderMachineList(document.getElementById('searchInput').value);
+}
+
+// ============================================================
+// DOCS TAB
+// ============================================================
+function renderDocsTab(m, cat='sve') {
+  const grid = document.getElementById('docGrid');
+  const docs = cat === 'sve' ? m.docs : m.docs.filter(d => d.category === cat);
+  grid.innerHTML = '';
+  if (!docs.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;color:var(--text3);font-size:13px;padding:24px 0;text-align:center">
+      ${cat === 'sve' ? 'Nema dokumenata. Dodaj fajlove pomoću zone iznad.' : 'Nema dokumenata u ovoj kategoriji.'}
+    </div>`;
+    return;
+  }
+  const catColors = {uputstvo:'cat-uputstvo', certifikat:'cat-certifikat', servis:'cat-servis', pranje:'cat-pranje', ostalo:'cat-ostalo'};
+  const catLabels = {uputstvo:'Uputstvo', certifikat:'Certifikat', servis:'Servis', pranje:'Pranje', ostalo:'Ostalo'};
+  const typeIcons = {pdf:'📄', doc:'📝', docx:'📝', jpg:'🖼', jpeg:'🖼', png:'🖼', xlsx:'📊', xls:'📊', default:'📎'};
+  docs.forEach(doc => {
+    const ext = (doc.name.split('.').pop()||'').toLowerCase();
+    const icon = typeIcons[ext] || typeIcons.default;
+    const card = document.createElement('div');
+    card.className = 'doc-card';
+    card.innerHTML = `
+      <span class="doc-cat-label ${catColors[doc.category]||'cat-ostalo'}">${catLabels[doc.category]||'Ostalo'}</span>
+      <div class="doc-icon">${icon}</div>
+      <div class="doc-name">${doc.name}</div>
+      <div class="doc-meta">${doc.size} · ${doc.date}</div>
+      <div style="display:flex;gap:6px;margin-top:10px">
+        <button class="btn btn-secondary" style="flex:1;padding:5px 8px;font-size:11px" onclick="viewDoc('${doc.id}')">Otvori</button>
+        <button class="btn btn-danger" style="padding:5px 8px;font-size:11px" onclick="deleteDoc('${doc.id}')">✕</button>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function filterDocs(cat, btn) {
+  document.querySelectorAll('.doc-cat-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  appData.aiDocCategory = cat;
+  renderDocsTab(getCurrentMachine(), cat);
+}
+
+function handleFileUpload(event) {
+  const m = getCurrentMachine();
+  if (!m) { toast('Odaberi mašinu prvo.'); return; }
+  const files = Array.from(event.target.files);
+  if (!files.length) return;
+
+  // Ask for category
+  const cats = {uputstvo:'📘 Uputstvo za rad', certifikat:'🏅 Certifikat', servis:'🔧 Servisni zapis', pranje:'🧹 Postupak pranja', ostalo:'📄 Ostalo'};
+  const catChoice = prompt(`Kategorija dokumenta:\n${Object.entries(cats).map(([k,v])=>`${k} = ${v}`).join('\n')}\n\nUnesite ključ (uputstvo/certifikat/servis/pranje/ostalo):`,'ostalo');
+  const cat = Object.keys(cats).includes(catChoice) ? catChoice : 'ostalo';
+
+  files.forEach(file => {
+    const kb = file.size / 1024;
+    const sizeFmt = kb > 1024 ? `${(kb/1024).toFixed(1)} MB` : `${kb.toFixed(0)} KB`;
+    m.docs.push({
+      id: 'd'+Date.now()+Math.random(),
+      name: file.name, category: cat,
+      size: sizeFmt, date: new Date().toISOString().split('T')[0],
+      type: file.name.split('.').pop().toLowerCase()
+    });
+  });
+  save();
+  renderDocsTab(m, appData.aiDocCategory);
+  toast(`✓ Dodano ${files.length} dokument(a)`);
+  event.target.value = '';
+}
+
+function viewDoc(id) {
+  const m = getCurrentMachine();
+  const doc = m.docs.find(d => d.id === id);
+  if (doc) toast(`📄 Otvaram: ${doc.name}\n(U produkciji bi se otvorio fajl iz baze)`);
+}
+
+function deleteDoc(id) {
+  const m = getCurrentMachine();
+  m.docs = m.docs.filter(d => d.id !== id);
+  save();
+  renderDocsTab(m, appData.aiDocCategory);
+  toast('Dokument obrisan.');
+}
+
+// ============================================================
+// AI TAB
+// ============================================================
+function renderAiAlerts(m) {
+  const cont = document.getElementById('aiAlerts');
+  cont.innerHTML = '';
+  const alerts = generateAiAlerts(m);
+  alerts.forEach(a => {
+    const el = document.createElement('div');
+    el.className = `ai-alert ai-alert-${a.color}`;
+    el.innerHTML = `
+      <div class="ai-alert-icon">${a.icon}</div>
+      <div>
+        <div class="ai-alert-title">${a.title}</div>
+        <div class="ai-alert-desc">${a.desc}</div>
+        <div class="ai-alert-meta meta-${a.color}">${a.meta}</div>
+      </div>
+    `;
+    cont.appendChild(el);
+  });
+  if (!alerts.length) {
+    cont.innerHTML = `<div style="color:var(--text3);font-size:13px;padding:12px 0">✓ Nema aktivnih upozorenja. Sve je u redu. Klikni "Analiziraj" za detaljnu procjenu.</div>`;
+  }
+}
+
+function generateAiAlerts(m) {
+  const alerts = [];
+  const total = getTotalHours(m);
+  const since = getSinceService(m);
+  const interval = m.serviceInterval || 500;
+  const pct = since / interval;
+
+  if (pct >= 1) {
+    alerts.push({
+      color:'red', icon:'🚨', title:'Prekoračen interval preventivnog održavanja',
+      desc:`Mašina je radila ${since}h od zadnjeg servisa, a interval je ${interval}h. Odmah zakazati servis.`,
+      meta:`Prekoračeno za ${since-interval}h · Prioritet: HITAN`
+    });
+  } else if (pct >= 0.8) {
+    alerts.push({
+      color:'amber', icon:'⚠️', title:'Bliži se termin preventivnog servisa',
+      desc:`Do narednog servisa ostalo ${Math.round((interval-since))}h rada. Preporučuje se zakazivanje servisa u narednih 1-2 sedmice.`,
+      meta:`${Math.round(pct*100)}% od intervala iskorišćeno · Planirati servis`
+    });
+  }
+
+  // Check for expiring certificates
+  const certs = m.docs.filter(d => d.category === 'certifikat');
+  if (certs.length === 0 && total > 100) {
+    alerts.push({
+      color:'amber', icon:'🏅', title:'Nema certifikata u dokumentaciji',
+      desc:'Nisu pronađeni certifikati za ovu mašinu. Provjerite da li su certifikati validni i učitajte ih u sistem.',
+      meta:'Preporučena akcija: Dodati certifikate'
+    });
+  }
+
+  if (total > 3000) {
+    alerts.push({
+      color:'blue', icon:'🔍', title:'Pregled generalnog stanja mašine',
+      desc:`Mašina ima ${total}h ukupnog rada. Preporučuje se pregled habajućih dijelova, ležajeva i sistema podmazivanja.`,
+      meta:'Preporučena inspekcija pri prelasku 3000h'
+    });
+  }
+
+  if (m.docs.filter(d=>d.category==='servis').length === 0) {
+    alerts.push({
+      color:'blue', icon:'📋', title:'Nema servisnih zapisa',
+      desc:'Nisu pronađeni servisni zapisi za ovu mašinu. Dodajte historiju servisa kako bi AI mogao davati preciznije preporuke.',
+      meta:'Informacija za AI asistenta'
+    });
+  }
+
+  alerts.push({
+    color:'green', icon:'✅', title:'Redovna kontrola maziva i filtara',
+    desc:'Na osnovu tipa mašine, preporuče se sedmična vizuelna kontrola nivoa maziva i čistoće filtara.',
+    meta:'Preventivna preporuka · Svake sedmice'
+  });
+
+  return alerts;
+}
+
+async function runAiAnalysis() {
+  const m = getCurrentMachine();
+  if (!m) return;
+
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Analiziram...';
+
+  addAiMessage('ai', `Analiziram mašinu "${m.name}"... Provjeravam radne sate, dokumentaciju i historiju servisa.`);
+
+  const total = getTotalHours(m);
+  const since = getSinceService(m);
+  const interval = m.serviceInterval || 500;
+  const docList = m.docs.map(d => `${d.name} (${d.category})`).join(', ') || 'nema dokumenata';
+
+  const prompt = `Ti si AI asistent za preventivno održavanje mašina u fabrici. Analiziraj sljedeće podatke i daj konkretne preporuke.
+
+MAŠINA: ${m.name}
+Lokacija: ${m.location || 'nije navedena'}
+Serijski broj: ${m.serial || 'nije naveden'}
+Interval servisa: ${interval}h
+
+RADNI SATI:
+- Ukupno sati rada: ${total}h  
+- Sati od zadnjeg servisa: ${since}h
+- Sati do servisa: ${Math.max(0, interval-since)}h
+- Prosječno sedmično: ${m.hours.length ? Math.round(total/m.hours.length) : 0}h/sedm.
+
+DOSTUPNI DOKUMENTI: ${docList}
+
+Napiši kratak tehnički izvještaj (4-6 rečenica) sa:
+1. Procjena trenutnog stanja mašine
+2. Konkretne preporuke za narednih 30 dana
+3. Šta provjeriti pri narednom servisu
+Budi konkretan i praktičan. Odgovaraj na bosanskom/srpskom jeziku.`;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        messages:[{role:'user', content:prompt}]
+      })
+    });
+    const data = await response.json();
+    const text = data.content && data.content[0] ? data.content[0].text : 'Greška u odgovoru.';
+    addAiMessage('ai', text);
+  } catch(e) {
+    // Fallback response
+    const since2 = getSinceService(m);
+    const remaining = Math.max(0, interval - since2);
+    let resp = `**Analiza mašine ${m.name}:**\n\n`;
+    if (since2 >= interval) {
+      resp += `🚨 HITNO: Mašina je prekoračila interval servisa za ${since2-interval}h. Potrebno je odmah zakazati servis.\n\n`;
+    } else if (since2 >= interval*0.8) {
+      resp += `⚠️ Preporuka: Do narednog servisa ostalo je samo ${remaining}h. Zakazati servis u narednoj sedmici.\n\n`;
+    } else {
+      resp += `✅ Stanje: Mašina radi u okviru parametara. Do servisa ostalo ${remaining}h.\n\n`;
+    }
+    resp += `📋 Preporuke za narednih 30 dana:\n• Sedmična vizuelna kontrola\n• Provjera nivoa maziva\n• Kontrola zategnutosti ležajeva\n• Dokumentovati sve nepravilnosti`;
+    addAiMessage('ai', resp);
+  }
+
+  btn.disabled = false;
+  btn.textContent = '✨ Analiziraj';
+}
+
+async function sendAiMessage() {
+  const input = document.getElementById('aiInput');
+  const text = input.value.trim();
+  if (!text) return;
+  const m = getCurrentMachine();
+  input.value = '';
+  addAiMessage('user', text);
+
+  // Loading dots
+  const loadId = 'load'+Date.now();
+  const loadDiv = document.createElement('div');
+  loadDiv.className = 'msg msg-ai';
+  loadDiv.id = loadId;
+  loadDiv.innerHTML = `<div class="msg-avatar avatar-ai">🤖</div><div class="msg-bubble"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
+  document.getElementById('aiMessages').appendChild(loadDiv);
+  scrollAiChat();
+
+  const context = m ? `Kontekst mašine: ${m.name}, ${getTotalHours(m)}h ukupno, ${getSinceService(m)}h od servisa, interval ${m.serviceInterval||500}h.` : '';
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:600,
+        messages:[{role:'user', content:`${context}\n\nPitanje o mašini: ${text}\n\nOdgovaraj kratko i praktično na bosanskom/srpskom jeziku.`}]
+      })
+    });
+    const data = await response.json();
+    document.getElementById(loadId)?.remove();
+    const reply = data.content && data.content[0] ? data.content[0].text : 'Greška u odgovoru.';
+    addAiMessage('ai', reply);
+  } catch(e) {
+    document.getElementById(loadId)?.remove();
+    addAiMessage('ai', 'Nije moguće kontaktirati AI servis. Provjerite internet konekciju. U međuvremenu, koristite automatska upozorenja na vrhu stranice za preporuke održavanja.');
+  }
+}
+
+function addAiMessage(role, text) {
+  const cont = document.getElementById('aiMessages');
+  const div = document.createElement('div');
+  div.className = `msg msg-${role}`;
+  const avatar = role === 'ai' ? '<div class="msg-avatar avatar-ai">🤖</div>' : '<div class="msg-avatar avatar-user">👤</div>';
+  const formattedText = text.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+  const bubble = role === 'ai'
+    ? `${avatar}<div class="msg-bubble">${formattedText}</div>`
+    : `<div class="msg-bubble">${formattedText}</div>${avatar}`;
+  div.innerHTML = bubble;
+  cont.appendChild(div);
+  scrollAiChat();
+}
+
+function scrollAiChat() {
+  const cont = document.getElementById('aiMessages');
+  cont.scrollTop = cont.scrollHeight;
+}
+
+// ============================================================
+// TABS
+// ============================================================
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const names = ['hours','docs','ai'];
+    t.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => {
+    p.classList.remove('active');
+    p.classList.add('hidden');
+  });
+  const panel = document.getElementById('tab-'+name);
+  panel.classList.remove('hidden');
+  panel.classList.add('active');
+}
+
+// ============================================================
+// ADD MACHINE MODAL
+// ============================================================
+function showAddModal() { document.getElementById('addModal').classList.remove('hidden'); }
+function hideModal() { document.getElementById('addModal').classList.add('hidden'); }
+
+function addMachine() {
+  const name = document.getElementById('newName').value.trim();
+  if (!name) { toast('Unesite naziv mašine.'); return; }
+  const m = {
+    id: 'm'+Date.now(),
+    name,
+    type: document.getElementById('newType').value,
+    location: document.getElementById('newLocation').value.trim(),
+    serial: document.getElementById('newSerial').value.trim(),
+    serviceInterval: parseInt(document.getElementById('newInterval').value)||500,
+    lastServiceHours: 0,
+    note: document.getElementById('newNote').value.trim(),
+    hours: [],
+    docs: []
+  };
+  appData.machines.push(m);
+  save();
+  hideModal();
+  renderMachineList();
+  renderSidebarAlerts();
+  selectMachine(m.id);
+  toast(`✓ Mašina "${m.name}" dodana`);
+  ['newName','newLocation','newSerial','newNote','newInterval'].forEach(id => document.getElementById(id).value='');
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+function toast(msg) {
+  const wrap = document.getElementById('toastWrap');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 3500);
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+function getISOWeek(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+  return Math.ceil((((d-yearStart)/86400000)+1)/7);
+}
+
+// Close modal on outside click
+document.getElementById('addModal').addEventListener('click', function(e) {
+  if (e.target === this) hideModal();
+});
+
+// ============================================================
+// INIT
+// ============================================================
+load();
+loadDemoData();
+renderMachineList();
+renderSidebarAlerts();
+</script>
+</body>
+</html>
