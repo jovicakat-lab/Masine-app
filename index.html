@@ -432,6 +432,7 @@
     <div class="sidebar-section-label">Mašine i uređaji</div>
     <div class="machine-list" id="machineList"></div>
     <button class="btn-add-machine" onclick="showAddModal()">+ Dodaj mašinu</button>
+    <button class="btn-add-machine" onclick="resetAllData()" style="border-color:rgba(239,68,68,0.3);color:var(--red);margin-top:0">🗑 Obriši sve podatke</button>
 
     <div class="sidebar-section-label">Upozorenja</div>
     <div class="sidebar-alerts" id="sidebarAlerts"></div>
@@ -459,8 +460,9 @@
             <div class="detail-subtitle" id="detailSubtitle">Lokacija · ID</div>
           </div>
         </div>
-        <div>
+        <div style="display:flex;align-items:center;gap:10px">
           <span class="status-badge" id="detailStatus"></span>
+          <button class="btn btn-danger" onclick="deleteMachine()" style="font-size:12px;padding:6px 12px">🗑 Obriši mašinu</button>
         </div>
       </div>
 
@@ -662,6 +664,9 @@ function load() {
 // DEMO DATA
 // ============================================================
 function loadDemoData() {
+  // Demo podaci se učitavaju SAMO ako nema sačuvanih podataka u pretraživaču
+  const existing = localStorage.getItem('fabrikapro_v2');
+  if (existing) return; // Korisnik već ima podatke, ne dirati
   if (appData.machines.length > 0) return;
   appData.machines = [
     {
@@ -1246,6 +1251,32 @@ function switchTab(name) {
 // ============================================================
 function showAddModal() { document.getElementById('addModal').classList.remove('hidden'); }
 function hideModal() { document.getElementById('addModal').classList.add('hidden'); }
+
+function deleteMachine() {
+  const m = getCurrentMachine();
+  if (!m) return;
+  if (!confirm(`Sigurno želiš obrisati mašinu "${m.name}"?\n\nBit će obrisani svi radni sati i dokumenti ove mašine. Ova akcija se ne može poništiti.`)) return;
+  appData.machines = appData.machines.filter(x => x.id !== m.id);
+  appData.currentMachineId = null;
+  save();
+  renderMachineList();
+  renderSidebarAlerts();
+  document.getElementById('machineDetail').classList.add('hidden');
+  document.getElementById('emptyState').classList.remove('hidden');
+  toast(`Mašina "${m.name}" je obrisana.`);
+}
+
+function resetAllData() {
+  if (!confirm('Sigurno želiš obrisati SVE mašine i podatke?\n\nOva akcija briše sve mašine, sate i dokumente. Ne može se poništiti.')) return;
+  appData.machines = [];
+  appData.currentMachineId = null;
+  save();
+  renderMachineList();
+  renderSidebarAlerts();
+  document.getElementById('machineDetail').classList.add('hidden');
+  document.getElementById('emptyState').classList.remove('hidden');
+  toast('Svi podaci su obrisani.');
+}
 
 function addMachine() {
   const name = document.getElementById('newName').value.trim();
